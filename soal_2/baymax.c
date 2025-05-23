@@ -267,7 +267,7 @@ static int baymax_create(const char *path, mode_t mode, struct fuse_file_info *f
     }
     fclose(f); // Tutup file kosong
 
-    write_log("CREATE: %s -> %s", filename, part_path);
+    write_log("WRITE: %s -> %s", filename, part_path);
 
     return 0; // Berhasil
 }
