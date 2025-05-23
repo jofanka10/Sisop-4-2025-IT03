@@ -1064,7 +1064,30 @@ Untuk cara kerjanya sebagai berikut.
 5. Terakhir, program membersihkan memori setelah sistem file tidak lagi digunakan.
 
 ### P. Revisi
-Revisi pada soal ini terletak pada penulisan log dan fitur copy paste antar mount_dir dan file fisik. Ada cukup banyak fungsi yang direvisi, untuk kode yang direvisi (sebagai penulisan write) adalah fungsi `baymax_write()`, `baymax_release()` dan `baymax_create()`. Untuk outputnya seperti ini.
+Revisi pada soal ini terletak pada penulisan log dan fitur copy paste antar mount_dir dan file fisik. Ada cukup banyak fungsi yang direvisi, untuk kode yang direvisi (sebagai penulisan write) adalah fungsi `baymax_write()`, `baymax_release()` dan `baymax_create()`. 
+Untuk fungsi `baymax_create()` seperti ini.
+```
+static int baymax_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
+    (void)mode; // Mode tidak digunakan secara langsung di sini
+
+    const char *filename = path + 1;
+    char part_path[PATH_MAX];
+
+    make_part_path(part_path, sizeof(part_path), filename, 0);
+
+    FILE *f = fopen(part_path, "wb"); // Buka file sebagai binary write
+    if (!f) {
+        write_log("ERROR: Failed to create initial part for %s: %s", filename, strerror(errno));
+        return -EIO; // Error I/O
+    }
+    fclose(f); // Tutup file kosong
+
+    write_log("WRITE: %s -> %s", filename, part_path);
+    return 0; // Berhasil
+}
+```
+
+Untuk outputnya seperti ini.
 ```
 [2025-05-23 23:10:00] WRITE: .misal2.txt.swp -> /home/jofanka/Sistem_Operasi/Modul_4/soal_2/relics/.misal2.txt.swp.000
 [2025-05-23 23:10:03] WRITE: misal2.txt -> /home/jofanka/Sistem_Operasi/Modul_4/soal_2/relics/misal2.txt.000
