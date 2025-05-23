@@ -1,29 +1,26 @@
-Pada soal ini kita mendapatkan pekerjaan di SEGA sebagai char designer untuk game maimai dan dipromosikan menjadi administrator, lalu kita diberi tugas untuk memastikan 7 area di maimai berfungsi seperti semestinya.<br>
-1. Starter Chiho sebagai menyimpan file yang masuk secara normal.<br>
-2. Metropolis Chiho sebagai file directory asli di shift sesuai lokasinya.<br>
-3. Dragon Chiho sebagai File yang disimpan di area ini dienkripsi menggunakan ROT13 di direktori asli. <br>
-4. Black Rose Chiho untuk menyimpan data dalam format biner murni, tanpa enkripsi atau encoding tambahan.
-5. Heaven Chiho untuk melindungi file dengan nkripsi AES-256-CBC.<br>
-6. Skystreet Chiho untuk dikompresi menggunakan gzip untuk menghemat storage.<br>
-7. 7sRef Chiho adalah area spesial yang dapat mengakses semua area lain melalui sistem penamaan khusus.
+#define FUSE_USE_VERSION 26
+
+#include <fuse.h>
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+#include <zlib.h>
 
 
-
-```c
 static const char *CHIHO_BASE_DIR = "chiho"; 
 static char REAL_CHIHO_BASE_PATH[PATH_MAX];
-```
 
-memiliki fungsi sebagai penyimpan informasi direktori dasar (base directory) dan path absolut dari direktori tersebut dalam sistem C, yang biasanya digunakan dalam program seperti FUSE filesystem atau program yang mengelola struktur direktori khusus.
-
-```c
 static const unsigned char g_aes_key[32] = "0123456789abcdef0123456789abcdef";
 #define AES_BLOCK_SIZE 16
-```
 
-Kode tersebut berfungsi untuk Mendefinisikan kunci enkripsi/dekripsi berukuran 256-bit (32 byte) untuk digunakan dalam algoritma AES-256.
-
-```c
 typedef enum {
     TYPE_STARTER,
     TYPE_METRO,
@@ -35,11 +32,7 @@ typedef enum {
     TYPE_ROOT,
     TYPE_UNKNOWN
 } ChihoType;
-```
 
-Enumerasi yang mendefinisikan berbagai jenis "chiho" (area/direktori) dalam sistem universe maimai (seperti yang sedang kamu bangun dengan FUSE).
-
-```c
 ChihoType get_chiho_type_and_real_path(const char *path, char *real_path_buf, char *original_filename_buf) {
     char temp_path[PATH_MAX];
     strncpy(temp_path, path, PATH_MAX -1); // Salin path agar bisa dimodifikasi
@@ -247,21 +240,13 @@ ChihoType get_chiho_type_and_real_path(const char *path, char *real_path_buf, ch
     }
     return type;
 }
-```
 
-Kode tersebut berfungsi untuk mendeteksi tipe area(chiho) berdasarkan path pengguna, menghasilkan path sebenarnya, dan menyimpan nama file asli.
-
-```c
 void metro_transform(char *data, size_t len, int direction) { 
     for (size_t i = 0; i < len; i++) {
         data[i] = (unsigned char)data[i] + (direction * (i % 256));
     }
 }
-```
 
-Kode tersebut berfungsi untuk melakukan transformasi (encoding atau decoding) pada sebuah buffer data.
-
-```c
 void rot13_transform(char *str, size_t len) {
     for (size_t i = 0; i < len; i++) {
         if ((str[i] >= 'A' && str[i] <= 'M') || (str[i] >= 'a' && str[i] <= 'm')) {
@@ -271,11 +256,7 @@ void rot13_transform(char *str, size_t len) {
         }
     }
 }
-```
 
-Kode tersebut digunakan untuk melakukan ROT13 cipher pada string yang diberikan.
-
-```c
 int aes_crypt(const unsigned char *input, int input_len,
               unsigned char *output, int *output_len,
               int do_encrypt, unsigned char *iv_in_out) {
@@ -308,10 +289,7 @@ int aes_crypt(const unsigned char *input, int input_len,
     EVP_CIPHER_CTX_free(ctx);
     return 0; 
 }
-```
-Fungsi dari kode tersebut adalah implementasi enkripsi dan dekripsi AES-256-CBC menggunakan OpenSSL EVP API.
 
-```c
 int gzip_compress_data(const char *src, size_t src_len, char **dst, size_t *dst_len) {
     z_stream zs;
     memset(&zs, 0, sizeof(zs));
@@ -342,10 +320,7 @@ int gzip_compress_data(const char *src, size_t src_len, char **dst, size_t *dst_
     *dst_len = zs.total_out;
     return 0; 
 }
-```
-Kode tersebut bertujuan untuk mengompresi data yang diberikan menggunakan format gzip dan menyimpan hasilnya di buffer yang dialokasikan secara dinamis.
 
-```c
 int gzip_decompress_data(const char *src, size_t src_len, char **dst, size_t *dst_len) {
     z_stream zs;
     memset(&zs, 0, sizeof(zs));
@@ -395,11 +370,7 @@ int gzip_decompress_data(const char *src, size_t src_len, char **dst, size_t *ds
     }
     return 0; 
 }
-```
 
-Kode tersebut berfungsi untuk mendekompresi data yang sudah dikompresi dengan format gzip dan menyimpan hasil dekompresi di buffer yang dialokasikan secara dinamis.
-
-```c
 static int maimai_getattr(const char *path, struct stat *stbuf) {
     char real_path[PATH_MAX];
     ChihoType type = get_chiho_type_and_real_path(path, real_path, NULL);
@@ -438,11 +409,7 @@ static int maimai_getattr(const char *path, struct stat *stbuf) {
     }
     return 0;
 }
-```
 
-Fungsi dari kode tersebut adalah implementasi handler untuk operasi getattr di sebuah sistem filesystem (kemungkinan FUSE) yang mengembalikan atribut (stat) file atau direktori berdasarkan path virtual yang diberikan.
-
-```c
 static int maimai_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                          off_t offset, struct fuse_file_info *fi) { 
     (void) offset; 
@@ -532,11 +499,7 @@ static int maimai_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     closedir(dp);
     return 0;
 }
-```
 
-Fungsi dari kode ini adalah implementasi handler untuk operasi readdir di filesystem berbasis FUSE, yang bertugas membaca isi direktori virtual dan mengisi daftar isi direktori yang diminta (path), lalu mengirimkan entri-entri tersebut ke kernel/klien melalui callback filler.
-
-```c
 static int maimai_open(const char *path, struct fuse_file_info *fi) {
     char real_path[PATH_MAX];
     ChihoType type = get_chiho_type_and_real_path(path, real_path, NULL);
@@ -551,11 +514,7 @@ static int maimai_open(const char *path, struct fuse_file_info *fi) {
     close(res); 
     return 0;
 }
-```
 
-Fungsi dari kode tersebut adalah implementasi handler untuk operasi open di FUSE filesystem yang kamu buat.
-
-```c
 static int maimai_read(const char *path, char *buf, size_t size, off_t offset,
                       struct fuse_file_info *fi) {
     (void)fi;
@@ -679,11 +638,7 @@ static int maimai_read(const char *path, char *buf, size_t size, off_t offset,
     if (processed_content) free(processed_content);
     return size;
 }
-```
 
-Fungsi dari kode ini adalah implementasi handler untuk operasi membaca file pada filesystem FUSE yang kamu buat. Fungsi ini meng-handle pembacaan isi file dengan perlakuan khusus sesuai area "chiho"-nya.
-
-```c
 static int maimai_write(const char *path, const char *buf, size_t size,
                        off_t offset, struct fuse_file_info *fi) {
     (void)fi;
@@ -794,11 +749,7 @@ static int maimai_write(const char *path, const char *buf, size_t size,
     if (data_to_write) free(data_to_write);                                             
     return (res_write < 0) ? res_write : size;
 }
-```
 
-Fungsi dari kode ini adalah implementasi handler menulis file (maimai_write) untuk filesystem FUSE-mu, yang menangani penulisan data ke file dengan perlakuan khusus berdasarkan tipe chiho (area) tempat file itu berada.
-
-```c
 static int maimai_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     char real_path[PATH_MAX];
     ChihoType type = get_chiho_type_and_real_path(path, real_path, NULL);
@@ -813,11 +764,7 @@ static int maimai_create(const char *path, mode_t mode, struct fuse_file_info *f
     close(fd_create);
     return 0;
 }
-```
 
-Fungsi dari kode ini adalah untuk Implementasi fungsi maimai_create yang kamu berikan sudah cukup baik dan ringkas untuk membuat file baru di path FUSE-mu dengan mode dan flag yang diberikan.
-
-```c
 static int maimai_unlink(const char *path) {
     char real_path[PATH_MAX];
     ChihoType type = get_chiho_type_and_real_path(path, real_path, NULL);
@@ -832,22 +779,13 @@ static int maimai_unlink(const char *path) {
 
     return 0;
 }
-```
 
-Kode tersebut berfungsi untuk menghapus file.
-
-```c
 static int maimai_release(const char *path, struct fuse_file_info *fi) {
     (void)path;
     (void)fi; 
     return 0;
 }
-```
 
-Fungsi dari kode ini adalah implementasi standar kosong untuk FUSE yang artinya saat file ditutup (release), tidak ada aksi khusus yang perlu dilakukan. Ini sudah benar dan cukup untuk kebanyakan kasus, terutama jika kamu tidak menggunakan handle file khusus atau resource tambahan.
-
-
-```c
 static int maimai_truncate(const char *path, off_t size) { 
     char real_path[PATH_MAX];
     char original_filename[PATH_MAX];
@@ -873,11 +811,7 @@ static int maimai_truncate(const char *path, off_t size) {
         return -EPERM; 
     }
 }
-```
 
-Kode terebut berfungsi untuk menangani operasi truncate (memotong atau mengubah ukuran file) pada sistem file virtual yang kamu buat dengan FUSE, khususnya dalam konteks universe maimai yang kamu kelola.
-
-```c
 static struct fuse_operations maimai_oper = {
     .getattr    = maimai_getattr,   
     .readdir    = maimai_readdir,   
@@ -889,11 +823,7 @@ static struct fuse_operations maimai_oper = {
     .release    = maimai_release, 
     .truncate   = maimai_truncate,  
 };
-```
 
-Kode tersebut berfungsi untuk mendefinisikan fungsi-fungsi callback yang akan dipanggil oleh FUSE (Filesystem in Userspace) ketika user atau sistem melakukan operasi tertentu pada filesystem virtual kamu.
-
-```c
 int main(int argc, char *argv[]) {
     if (realpath(CHIHO_BASE_DIR, REAL_CHIHO_BASE_PATH) == NULL) {
         perror("Failed to get real path for chiho base directory");
@@ -919,6 +849,3 @@ int main(int argc, char *argv[]) {
     umask(0); 
     return fuse_main(argc, argv, &maimai_oper, NULL);
 }
-```
-
-Kode tersebut berfungsi sebagai entry point program FUSE filesystem yang kamu buat untuk universe "maimai".
