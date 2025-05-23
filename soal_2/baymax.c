@@ -19,9 +19,7 @@
 static char relics_dir[PATH_MAX];
 static char log_path[PATH_MAX];
 
-// --- Deklarasi Forward untuk Fungsi Helper dan Struktur ---
-// Ini memberitahu compiler bahwa fungsi-fungsi ini ada,
-// dan definisi lengkapnya akan menyusul.
+
 void write_log(const char *format, ...);
 static void make_part_path(char *buf, size_t size, const char *filename, int index);
 static int count_parts(const char *filename);
@@ -34,13 +32,10 @@ struct file_write_buffer {
     size_t capacity;
 };
 
-// Fungsi helper untuk buffer tulis (ini harus dideklarasikan/didefinisikan sebelum baymax_write/release)
 static struct file_write_buffer *get_write_buffer(struct fuse_file_info *fi);
 static void set_write_buffer(struct fuse_file_info *fi, struct file_write_buffer *buf);
 static int save_parts(const char *filename, const char *buf, size_t size); // Deklarasi save_parts
 
-
-// --- Implementasi Fungsi Helper ---
 
 // Helper untuk log aktivitas dengan timestamp
 void write_log(const char *format, ...) {
@@ -273,16 +268,6 @@ static int baymax_create(const char *path, mode_t mode, struct fuse_file_info *f
     fclose(f); // Tutup file kosong
 
     write_log("CREATE: %s -> %s", filename, part_path);
-
-    // Ini adalah tempat yang bagus untuk menginisialisasi buffer tulis jika fi->fh diatur di sini
-    // Namun, pendekatan yang ada di baymax_write (lazy allocation) juga berfungsi.
-    // Jika Anda ingin menginisialisasi di sini:
-    // struct file_write_buffer *wb = malloc(sizeof(struct file_write_buffer));
-    // if (!wb) return -ENOMEM;
-    // wb->data = NULL;
-    // wb->size = 0;
-    // wb->capacity = 0;
-    // set_write_buffer(fi, wb);
 
     return 0; // Berhasil
 }
