@@ -1063,7 +1063,12 @@ Untuk cara kerjanya sebagai berikut.
 4. Kemudian, program menjalankan FUSE, membuat filesystem virtual berfungsi.
 5. Terakhir, program membersihkan memori setelah sistem file tidak lagi digunakan.
 
-
+### P. Revisi
+Revisi pada soal ini terletak pada penulisan log dan fitur copy paste antar mount_dir dan file fisik. Ada cukup banyak fungsi yang direvisi, untuk kode yang direvisi (sebagai penulisan write) adalah fungsi `baymax_write()`, `baymax_release()` dan `baymax_create()`. Untuk outputnya seperti ini.
+```
+[2025-05-23 23:10:00] WRITE: .misal2.txt.swp -> /home/jofanka/Sistem_Operasi/Modul_4/soal_2/relics/.misal2.txt.swp.000
+[2025-05-23 23:10:03] WRITE: misal2.txt -> /home/jofanka/Sistem_Operasi/Modul_4/soal_2/relics/misal2.txt.000
+```
 ## soal_3
 
 pada soal kali ini kita diminta untuk membuat sebuah program yang dapat mendeteksi file berbahaya kemudian membalikan nama file tersebut  lalu mencetak log serta mengenkriipsi file yang tidak berbahaya dengan ROT13
