@@ -1064,8 +1064,7 @@ Untuk cara kerjanya sebagai berikut.
 5. Terakhir, program membersihkan memori setelah sistem file tidak lagi digunakan.
 
 ### P. Revisi
-Revisi pada soal ini terletak pada penulisan log dan fitur copy paste antar mount_dir dan file fisik. Ada cukup banyak fungsi yang direvisi, untuk kode yang direvisi (sebagai penulisan write) adalah fungsi `baymax_write()`, `baymax_release()` dan `baymax_create()`. 
-Untuk fungsi `baymax_create()` seperti ini.
+Revisi pada soal ini terletak pada penulisan log dan fitur copy paste antar mount_dir dan file fisik. Ada cukup banyak fungsi yang direvisi, diantaranya yang direvisi (sebagai penulisan write) adalah fungsi `baymax_write()` dan `baymax_release()`. Untuk fungsi `baymax_create()` seperti ini.
 ```
 static int baymax_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     (void)mode; // Mode tidak digunakan secara langsung di sini
@@ -1086,7 +1085,37 @@ static int baymax_create(const char *path, mode_t mode, struct fuse_file_info *f
     return 0; // Berhasil
 }
 ```
+Untuk fungsi `baymax_release()` seperti ini.
+```
+static int baymax_release(const char *path, struct fuse_file_info *fi) {
+    struct file_write_buffer *wb = get_write_buffer(fi);
+    if (wb) {
+        const char *filename = path + 1;
+        int parts = save_parts(filename, wb->data, wb->size);
 
+        if (parts > 0) {
+            char part_list[4096] = {0};
+            for (int i = 0; i < parts; i++) {
+                char partname[256];
+                snprintf(partname, sizeof(partname), "%s.%03d", filename, i);
+                strcat(part_list, partname);
+                if (i != parts - 1) {
+                    strcat(part_list, ", ");
+                }
+            }
+            write_log("WRITE: %s -> %s", filename, part_list);
+        } else {
+            // Ini akan mencatat file kosong atau jika save_parts mengembalikan 0 karena error
+            write_log("WRITE: %s (no parts saved or empty file)", filename);
+        }
+
+        free(wb->data);
+        free(wb);
+        set_write_buffer(fi, NULL);
+    }
+    return 0;
+}
+```
 Untuk outputnya seperti ini.
 ```
 [2025-05-23 23:10:00] WRITE: .misal2.txt.swp -> /home/jofanka/Sistem_Operasi/Modul_4/soal_2/relics/.misal2.txt.swp.000
